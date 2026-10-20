@@ -16,11 +16,11 @@ function cleanHome() {
     location.href = "/home.html";
 }
 
-function login(sessionId) {
+function login(sessionId, page) {
     console.log("Change Session. sessionId = " + sessionId);
     console.log(sessionId.replace(":", "=") + "; max-age=" + (60 * 60 * 24 * 365 * 2));
     document.cookie = sessionId.replace(":", "=") + "; max-age=" + (60 * 60 * 24 * 365 * 2);
-    location.href = "/home.html";
+    location.href = page || "/home.html";
 }
 
 function changeSession(sessionId) { // cookieCrumble
