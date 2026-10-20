@@ -3,6 +3,7 @@ import json
 import pytest
 from flask import Flask, session, request
 from pyamf import remoting
+import pyamf
 
 empires_server = __import__('empires-server')
 import quest_engine
@@ -387,6 +388,61 @@ def test_post_gateway(monkeypatch):
         assert endpoint_response.bodies[0][0] == '/9'
         assert remoting.decode(response_result.data).bodies[0][1].body['errorType'] == 0
         assert remoting.decode(response_result.data).bodies[0][1].body['data'] == [{'errorType': 0, 'userId': 1, 'metadata': {'newPVE': 0}, 'data': []}]
+
+
+# ruffle.html passes the app_url FlashVar "<origin>/", so the client requests these files from the site root
+@pytest.mark.parametrize("path, method, endpoint", [
+    ('/flashservices/gateway.php', 'POST', 'post_gateway'),
+    ('/record_stats.php', 'POST', 'record_stats'),
+    ('/en_US.xml', 'GET', 'en_us_file'),
+    ('/questSettings.xml', 'GET', 'quest_settings_file'),
+    ('/gameSettings.xml', 'GET', 'game_settings_file'),
+])
+def test_app_url_routes(path, method, endpoint):
+    adapter = empires_server.app.url_map.bind('localhost')
+    assert adapter.match(path, method=method)[0] == endpoint
+
+
+def test_amf0_to_amf3_values():
+    call = pyamf.ASObject({'functionName': 'UserService.initUser', 'sequence': 1.0, 'stamp': 1792506383524.412,
+                           'params': pyamf.MixedArray({0: 'Titan_alpha-test'})})
+    body = [pyamf.ASObject({'flashRevision': None}), pyamf.MixedArray({0: call}), 0.0]
+
+    converted = empires_server.amf0_to_amf3_values(body)
+
+    assert converted == [{'flashRevision': None}, [{'functionName': 'UserService.initUser', 'sequence': 1,
+                                                    'stamp': 1792506383524.412, 'params': ['Titan_alpha-test']}], 0]
+    assert converted[1][0].functionName == 'UserService.initUser'  # objects keep attribute access
+    assert isinstance(converted[1][0].sequence, int)
+    assert empires_server.amf0_to_amf3_values(pyamf.MixedArray()) == []
+    assert empires_server.amf0_to_amf3_values(pyamf.MixedArray({0: 'a', 'b': 1.0})) == {0: 'a', 'b': 1}
+
+
+def test_post_gateway_ruffle_amf0(monkeypatch):
+    # Ruffle encodes NetConnection.call() arguments as AMF0: Arrays become ECMA arrays and ints become Numbers
+    monkeypatch.setattr(empires_server, "report_other_log", lambda *args: None)
+
+    with app.test_request_context():
+        session["fleets"] = {}
+
+        envelope = remoting.Envelope(pyamf.AMF0)
+        units = pyamf.MixedArray({0: 'UB96,300,0,0,0', 1: 'UB96,300,0,1,0'})
+        fleet = pyamf.ASObject({'status': 104.0, 'allies': pyamf.MixedArray({0: '-1'}), 'name': 'fleet16_3398563345700246',
+                                'type': 'air', 'uid': '3398563345700246', 'ch': 5867.0, 'units': units})
+        call = pyamf.ASObject({'transaction': None, 'sequence': 22.0, 'stamp': 1641513847112.56,
+                               'params': pyamf.MixedArray({0: fleet}), 'functionName': 'WorldService.addFleet'})
+        req = remoting.Request('BaseService.dispatchBatch',
+                               body=[pyamf.ASObject({'flashRevision': None}), pyamf.MixedArray({0: call}), 0.0],
+                               envelope=envelope)
+        envelope.bodies = [('/1', req)]
+        request.data = remoting.encode(envelope).getvalue()
+
+        response_result = empires_server.post_gateway()
+
+        assert session["fleets"]["fleet16_3398563345700246"] == ['UB96,300,0,0,0', 'UB96,300,0,1,0']
+        assert session["fleets"]["ally_fleet16_3398563345700246"] == ['-1']
+        assert remoting.decode(response_result.data).bodies[0][1].body['data'] == [
+            {'errorType': 0, 'userId': 1, 'metadata': {'newPVE': 0}, 'data': []}]
 
 
 # pytest.main(['-rPA'])

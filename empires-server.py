@@ -477,7 +477,9 @@ def format_backup_message(backup):
            + str(backup.get("message", ""))
 
 
+# Root-level aliases (/record_stats.php, /en_US.xml, ...) serve clients that get the app_url FlashVar, e.g. ruffle.html
 @app.route("/127.0.0.1record_stats.php", methods=['GET', 'POST'])
+@app.route("/record_stats.php", methods=['GET', 'POST'])
 def record_stats():
     return ('', 204)
 
@@ -499,12 +501,14 @@ def game_settings_file():
 
 
 @app.route("/127.0.0.1en_US.xml")
+@app.route("/en_US.xml")
 def en_us_file():
     # return send_from_directory_mod("assets/32995", "en_US.xml")
     return send_from_directory_mod("assets/29oct2012", "en_US.xml")
 
 
 @app.route("/127.0.0.1questSettings.xml")
+@app.route("/questSettings.xml")
 def quest_settings_file():
     return send_from_directory_mod("assets/29oct2012", "questSettings_with_fixes.xml")
 
@@ -739,7 +743,24 @@ def send_from_directory_mod(directory, filename, **options):
     return mod_engine.mod.get(path)() if path in mod_engine.mod else send_from_directory(absolute_directory, filename, **options)
 
 
+def amf0_to_amf3_values(value):
+    """Ruffle sends NetConnection.call() arguments as AMF0, Flash Player sent AMF3. Turn the AMF0 forms back into
+    what the handlers expect: ECMA arrays ({0: a, 1: b}) into lists, whole-number floats (AMF0 has no int) into ints."""
+    if isinstance(value, pyamf.MixedArray) and sorted(value, key=str) == sorted(range(len(value)), key=str):
+        return [amf0_to_amf3_values(value[i]) for i in range(len(value))]
+    if isinstance(value, dict):
+        for key in value:
+            value[key] = amf0_to_amf3_values(value[key])  # in place, so ASObject keeps attribute access
+        return value
+    if isinstance(value, list):
+        return [amf0_to_amf3_values(v) for v in value]
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return value
+
+
 @app.route('/files/empire-s.assets.zgncdn.com/assets/109338/127.0.0.1flashservices/gateway.php', methods=['POST'])
+@app.route('/flashservices/gateway.php', methods=['POST'])
 def post_gateway():
     print("Gateway:")
     print(repr(request))
@@ -751,7 +772,7 @@ def post_gateway():
     # print(resp_msg.bodies[0])
 
     resps = []
-    for reqq in resp_msg.bodies[0][1].body[1]:
+    for reqq in amf0_to_amf3_values(resp_msg.bodies[0][1].body)[1]:
         if reqq.functionName == 'UserService.initUser':
             try:
                 resps.append(user_response())

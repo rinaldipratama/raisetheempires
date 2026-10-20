@@ -13,7 +13,10 @@
 	<link rel="stylesheet" href="css/tooltiplink.css"/>
 	<link rel="stylesheet" href="css/zbar.css"/>
 	<!-- JS -->
-	<script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
+	<script src="https://unpkg.com/@ruffle-rs/ruffle@0.7.1/ruffle.js"></script>
+	<script src="//code.jquery.com/jquery-3.4.1.min.js"></script>
+	<script src="https://cdn.socket.io/4.8.3/socket.io.min.js" integrity="sha384-kzavj5fiMwLKzzD1f8S7TeoVIEi7uKHvbTA3ueZkrzYq75pNQUiUi6Dy98Q3fxb0" crossorigin="anonymous"></script>
+	<script src="js/socketio.js"></script>
 	<script src="js/flash.js"></script>
 	<script src="js/session.js"></script>
 	<script src="js/empires.js"></script>
@@ -206,27 +209,35 @@
 												<div id='ruffle'></div>
 												<script>
 													window.RufflePlayer = window.RufflePlayer || {};
-													window.RufflePlayer.config = {autoplay: "on", LogLevel: "debug"};
+													window.RufflePlayer.config = {
+														autoplay: "on",
+														logLevel: "info",  // "debug" or "trace" for more Ruffle output in the console
+													};
 													const ruffle = window.RufflePlayer.newest();
 													var player = Object.assign(document.getElementById("ruffle").appendChild(ruffle.createPlayer()), {
 														width: 1000,
 														height: 750,
 														style: 'width: 1000px; height: 750px; background-color: #333399;',
 													});
+													// FlashVars. Same as home.html, plus app_url: the SWF's default base path "127.0.0.1" is a
+													// relative URL, and Ruffle only opens a NetConnection (AMF gateway) to http(s) URLs.
+													// The game appends flashservices/gateway.php, record_stats.php, en_US.xml, ... to app_url.
+													const flashVars = new URLSearchParams({
+														serverTime: "{{ time | default(1308211688) }}",
+														is_staging: "true",
+														debugMode: "true",
+														generateSchema: "1",
+														sn_app_url: "",
+														stats: "1",
+														app_url: window.location.origin + "/",
+													});
 													player.load({ // https://ruffle.rs/js-docs/master/interfaces/Config.URLLoadOptions.html
 														url: "/files/empire-s.assets.zgncdn.com/assets/109338/ZGame.109338.swf",
 														backgroundColor: "#333399",
-														allowScriptAccess: false,
+														allowScriptAccess: true,  // the game calls getUserInfo() etc. through ExternalInterface
 														allowFullscreen: true,
 														quality: "high",
-														//autoplay: true,
-														parameters: '\
-															serverTime={{time}}\
-															&is_staging=true\
-															&debugMode=true\
-															&generateSchema=1\
-															&sn_app_url=\
-															&stats=1'
+														parameters: flashVars,
 													}).then(() => {
 														console.info("Ruffle successfully loaded the file");
 													}).catch((e) => {
@@ -271,10 +282,19 @@
 						<div style="margin: 30px"></div>
 						<div class="uiInterstitialBar uiBoxGray topborder">
 							<center>
-								<a href="home.html">Back to debug mode</a>
+								<h3 style="display: inline;">Debug Panel (Ruffle)</h3>
+								<p style="display: inline;">~</p>
+								<a href="home.html">Flash Player version</a>
 							</center>
 							<br>
 							<div class="clearfix">
+								<center><table style="border: 1px solid #3b5998; border-radius: 5px;">
+									<tr>
+										<td><div class="logbox" id="tutorial_step">&nbsp;</div></td>
+										<td><div class="logbox" id="world_log">&nbsp;</div></td>
+										<td><div class="logbox" id="other_log">&nbsp;</div></td>
+									</tr>
+								</table></center>
 								<center>
 									<p style="color: #666699;"> <br>
 									The Raise the Empires team. Empires &amp; Allies {{ version | default("")}}
