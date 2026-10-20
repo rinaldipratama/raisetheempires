@@ -445,5 +445,35 @@ def test_post_gateway_ruffle_amf0(monkeypatch):
             {'errorType': 0, 'userId': 1, 'metadata': {'newPVE': 0}, 'data': []}]
 
 
+def test_post_gateway_response_without_amf0_references(monkeypatch):
+    # Ruffle 0.7.1 can't read AMF0 references (an object written twice in one message) and turns them into null
+    shared_friend = {'uid': 124, 'first_name': 'MissTery'}
+    monkeypatch.setattr(empires_server, "friend_response", lambda: {
+        'errorType': 0, 'userId': 1, 'metadata': {'newPVE': 0},
+        'data': {'zyngaFriends': {'data': [shared_friend]}, 'allFriends': {'data': [shared_friend]}}})
+    monkeypatch.setattr(empires_server, "report_other_log", lambda *args: None)
+
+    def fail_on_reference(self):
+        raise AssertionError("AMF0 reference in gateway response")
+
+    monkeypatch.setattr(pyamf.amf0.Decoder, "readReference", fail_on_reference)
+
+    with app.test_request_context():
+        envelope = remoting.Envelope(pyamf.AMF0)
+        call = pyamf.ASObject({'transaction': None, 'sequence': 3.0, 'stamp': 0.0, 'params': pyamf.MixedArray(),
+                               'functionName': 'DataServicesService.getRequestFriends'})
+        req = remoting.Request('BaseService.dispatchBatch',
+                               body=[pyamf.ASObject({'flashRevision': None}), pyamf.MixedArray({0: call}), 0.0],
+                               envelope=envelope)
+        envelope.bodies = [('/1', req)]
+        request.data = remoting.encode(envelope).getvalue()
+
+        response_result = empires_server.post_gateway()
+
+        friends = remoting.decode(response_result.data).bodies[0][1].body['data'][0]['data']
+        assert friends['zyngaFriends']['data'][0]['uid'] == 124
+        assert friends['allFriends']['data'][0]['uid'] == 124
+
+
 # pytest.main(['-rPA'])
 #pytest.main(['-rPA', '-vv'])

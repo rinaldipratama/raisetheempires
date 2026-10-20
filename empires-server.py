@@ -759,6 +759,19 @@ def amf0_to_amf3_values(value):
     return value
 
 
+def unshare_amf_values(value):
+    """pyamf writes an object that occurs twice in one AMF0 message as a reference, which Ruffle can't read yet
+    (it becomes null). Give every occurrence its own copy so no references are written."""
+    if isinstance(value, dict):
+        copied = copy.copy(value)
+        for key in copied:
+            copied[key] = unshare_amf_values(copied[key])
+        return copied
+    if isinstance(value, list):
+        return [unshare_amf_values(v) for v in value]
+    return value
+
+
 @app.route('/files/empire-s.assets.zgncdn.com/assets/109338/127.0.0.1flashservices/gateway.php', methods=['POST'])
 @app.route('/flashservices/gateway.php', methods=['POST'])
 def post_gateway():
@@ -1196,7 +1209,7 @@ def post_gateway():
         "data": resps
     }
 
-    req = remoting.Response(emsg)
+    req = remoting.Response(unshare_amf_values(emsg))
     ev = remoting.Envelope(pyamf.AMF0)
     ev[resp_msg.bodies[0][0]] = req
     #  print(ev.headers)

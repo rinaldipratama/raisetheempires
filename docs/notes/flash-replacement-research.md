@@ -164,8 +164,28 @@ Tested with Ruffle 0.7.1 (unpkg) in Brave/Chromium on Linux, branch `ruffle-supp
    Ruffle.** The `Titan_alpha-test` world (level 75) renders with HUD values,
    buildings, units, animations and the neighbour bar. `initUser` round-trips
    (server AMF0 response is decoded fine by Ruffle).
-5. Next: play-test core actions (collect, build/move, quests, a battle,
+5. **2026-10-20, new empire, tutorial.** Progress is lost on reload; the blue
+   "pending" animation in the XP bar never stops. Evidence: `log.txt` shows
+   only two gateway POSTs, then none for 21 minutes of play; the save still
+   has `tutorialProgress: ''`. The second batch (`setCurrentCampaign`,
+   `getRequestFriends`, `getUsersInvaderChallenges`) fails in Ruffle with
+   `Deserialization not yet implemented for Reference` and then
+   `TypeError #1009 ... (accessing field: uid) at TInitRequestFriends/onComplete()`.
+   Root cause: pyamf writes an object that occurs twice in one AMF0 message as
+   a reference (`friend_response` puts the same friend dict in several lists);
+   Ruffle 0.7.1 can't read AMF0 references and yields null. The exception
+   inside `TransactionManager.onAmfBatchComplete` leaves `m_batchedAmfCalls`
+   non-empty, and `onAmfBatchSend` only sends when it is empty, so every
+   later transaction stays queued client-side forever (and the pending
+   indicator, `PlayerStatsUIItem.pending_mc`, keeps spinning).
+   Fix: `unshare_amf_values()` copies the response so no object is shared
+   before encoding. Test: `test_post_gateway_response_without_amf0_references`.
+6. Next: play-test core actions (collect, build/move, quests, a battle,
    visiting a neighbour, save/reload) and note what breaks.
+
+Dev gotcha: the Werkzeug reloader (`--debug`) can miss a second edit made
+within ~1 s of the first, leaving the server on half-updated code. If a fix
+seems to have no effect, `touch empires-server.py` or restart the server.
 
 Decompiled AS3 (JPEXS FFDec 26.4.0 CLI, `-export script`) is useful for the
 next errors: `java -jar ffdec-cli.jar -export script <outdir> ZGame.swf`
