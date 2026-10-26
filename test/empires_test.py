@@ -438,6 +438,65 @@ def test_immunity_start_response_progresses_quest(monkeypatch):
         assert int(before) + 18 * 3600 <= immunity["expTS"] <= datetime.now().timestamp() + 18 * 3600
 
 
+def test_immunity_extend_response(monkeypatch):
+    monkeypatch.setattr(empires_server, "get_saves", lambda: [])
+
+    with app.test_request_context():
+        session.sid = "0"
+        session['user_object'] = empires_server.init_user()
+        player = session['user_object']["userInfo"]["player"]
+        player["cash"] = 10
+        expires = int(datetime.now().timestamp()) + 3600
+        session['user_object']["pvp"]["immunity"] = {"expTS": expires, "hIDs": [player["uid"]]}
+
+        # "Hire a Friend!" in the Extend Neutrality dialog: pay 3 cash for a fake contributor ("-1")
+        empires_server.immunity_extend_response()
+
+        assert session['user_object']["pvp"]["immunity"] == {"expTS": expires, "hIDs": [player["uid"], "-1"]}
+        assert player["cash"] == 7
+
+        # Not immune (expired): nothing to extend
+        session['user_object']["pvp"]["immunity"] = {"expTS": 1, "hIDs": [player["uid"]]}
+        empires_server.immunity_extend_response()
+        assert session['user_object']["pvp"]["immunity"]["hIDs"] == [player["uid"]]
+        assert player["cash"] == 7
+
+
+def test_crew_request_response_world_embassy(monkeypatch):
+    monkeypatch.setattr(empires_server, "get_saves", lambda: [])
+
+    with app.test_request_context():
+        session.sid = "0"
+        session['user_object'] = empires_server.init_user()
+        uid = session['user_object']["userInfo"]["player"]["uid"]
+        expires = int(datetime.now().timestamp()) + 3600
+        session['user_object']["pvp"]["immunity"] = {"expTS": expires, "hIDs": [uid]}
+
+        # "Hire a Friend!" in Extend Neutrality: the World Embassy is not a world object (id -1);
+        # NPC neighbours (AcidCaos 111) accept right away and become neutrality contributors
+        empires_server.crew_request_response([[111, 124], -1, 'PVPImmunityBldg', 'crew'])
+
+        # MissTery (124) is not a neighbour, so she does not accept
+        assert session['user_object']["pvp"]["immunity"] == {"expTS": expires, "hIDs": [uid, 111]}
+
+
+def test_advance_immunity():
+    # Mirrors PVPManager.updateImmunity: when expTS passes, the next contributor takes over for 24h
+    immunity = {"expTS": 1000, "hIDs": [5, "-1", "-1"]}
+    empires_server.advance_immunity(immunity, 1000 + 86400 + 10)
+    assert immunity == {"expTS": 1000 + 2 * 86400, "hIDs": ["-1"]}
+
+    immunity = {"expTS": 1000, "hIDs": [5]}
+    empires_server.advance_immunity(immunity, 2000)
+    assert immunity == {"hIDs": []}
+
+    immunity = {"expTS": 5000, "hIDs": [5, "-1"]}
+    empires_server.advance_immunity(immunity, 2000)
+    assert immunity == {"expTS": 5000, "hIDs": [5, "-1"]}
+
+    empires_server.advance_immunity([], 2000)  # never started
+
+
 def test_out_of_resources_dialog_stand_in():
     # The original PU_OutOfResources.swf was never recovered; build-tools/missing-assets has a stand-in.
     # RequirementsPopup and OutOfUnitsPopup look these names up in it.

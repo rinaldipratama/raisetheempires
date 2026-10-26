@@ -1068,7 +1068,7 @@ def post_gateway():
         elif reqq.functionName == 'PVPService.slotMachineSpinBuy':
             resps.append(dummy_response())
         elif reqq.functionName == 'PVPService.immunityExtend':
-            resps.append(dummy_response())
+            resps.append(immunity_extend_response())
         elif reqq.functionName == 'PVPService.immunityStart':
             resps.append(immunity_start_response())
         elif reqq.functionName == 'PVPService.occupationPlace':
@@ -1556,6 +1556,7 @@ def user_response():
     #     session['user_object']["userInfo"]["player"]["lastEnergyCheck"] = datetime.now().timestamp()
 
     replenish_energy()
+    advance_immunity(session['user_object']["pvp"]["immunity"], datetime.now().timestamp())
 
     session["battle"] = None
     session["fleets"] = {}
@@ -2610,6 +2611,30 @@ def immunity_start_response():
     return immunity_start_response
 
 
+def immunity_extend_response():
+    # PVPManager.extendImmunity: pay cash for a hired contributor ("-1"); each extra contributor adds time
+    settings = game_settings['settings']['gamesettings']
+    immunity = session['user_object']["pvp"]["immunity"]
+    if isinstance(immunity, dict) and immunity.get("expTS", 0) > datetime.now().timestamp() \
+            and len(immunity["hIDs"]) < int(settings['-PVPImmunityNeighborSlots']):
+        session['user_object']["userInfo"]["player"]["cash"] -= int(settings['-PVPImmunityNeighborSlotPurchaseCost'])
+        immunity["hIDs"].append("-1")
+    immunity_extend_response = {"errorType": 0, "userId": 1, "metadata": {"newPVE": 0},
+                                "data": []}
+    return immunity_extend_response
+
+
+def advance_immunity(immunity, now):
+    # Mirrors PVPManager.updateImmunity: when expTS passes, the next contributor takes over
+    # (the client uses PVPImmunityNeighborDurationBonus, which gameSettings lacks, so its default of 1 day)
+    while isinstance(immunity, dict) and immunity.get("expTS") and now >= immunity["expTS"]:
+        immunity["hIDs"] = immunity.get("hIDs", [])[1:]
+        if immunity["hIDs"]:
+            immunity["expTS"] += 86400
+        else:
+            del immunity["expTS"]
+
+
 def select_response(param):
     meta = {"newPVE": 0}
     handle_quest_progress(meta, all_lambda(progress_action("select"),
@@ -2639,7 +2664,18 @@ def crew_request_response(params):
     building_id = params[1]
     building_name = params[2]
     action = params[3]
-    
+
+    if building_name == 'PVPImmunityBldg':
+        # The World Embassy crew are neutrality contributors (pvp.immunity.hIDs), not a world object (id -1)
+        immunity = session['user_object']["pvp"]["immunity"]
+        if isinstance(immunity, dict) and immunity.get("expTS", 0) > datetime.now().timestamp():
+            slots = int(game_settings['settings']['gamesettings']['-PVPImmunityNeighborSlots'])
+            for friend in friends:
+                if allies.get(str(friend), {}).get("neighbor") and friend not in immunity["hIDs"] \
+                        and len(immunity["hIDs"]) < slots:
+                    immunity["hIDs"].append(friend)
+        return {"errorType": 0, "userId": 1, "metadata": {"newPVE": 0}, 'data': []}
+
     building = lookup_object(building_id)
     
     if action == 'crew':

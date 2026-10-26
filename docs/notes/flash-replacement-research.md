@@ -232,10 +232,28 @@ Tested with Ruffle 0.7.1 (unpkg) in Brave/Chromium on Linux, branch `ruffle-supp
    server always sent as `[]`. Not Ruffle-related. Fix:
    `immunity_start_response()` stores `{expTS, hIDs}` in `pvp.immunity` and
    progresses `startImmunity` quest tasks. Test:
-   `test_immunity_start_response_progresses_quest`. Still a stub:
-   `PVPService.immunityExtend` (hiring friends to extend neutrality). Same
-   pattern as Q0805: the emulator still has many stubbed services, so expect
-   more quests like this.
+   `test_immunity_start_response_progresses_quest`. Same pattern as Q0805: the
+   emulator still has many stubbed services, so expect more quests like this.
+   Follow-up: `PVPService.immunityExtend` ("Hire a Friend!", 3 cash) now adds
+   a fake contributor `"-1"` to `hIDs` like `PVPManager.extendImmunity`, and
+   `advance_immunity()` (called in initUser) mirrors the client's
+   `updateImmunity` so expired contributors are rotated out server-side
+   (24 h each: the client reads `PVPImmunityNeighborDurationBonus`, which
+   gameSettings lacks, default 86400). Tests: `test_immunity_extend_response`,
+   `test_advance_immunity`.
+   The orange "Hire a Friend!" button sends `RequestService.crewRequest` with
+   building id `-1` and name `PVPImmunityBldg`; `crew_request_response` looked
+   up world object -1 and crashed (500, endless retries, "attempting to connect
+   to the server"). Now NPC neighbours are added to `pvp.immunity.hIDs`
+   instead. Test: `test_crew_request_response_world_embassy`.
+   Known limitation: hired friends only show up after a reload. The client adds
+   them when a Zlingshot push message `{"id": "pvp.immCrew", "staffer": uid}`
+   arrives (`ZlingshotEmpires.handle` → `PVPManager.addImmunityCrew`), and all
+   `ZlingshotService.*` calls are stubbed. Polling (`ZlingshotService.fetch`
+   every 60 s, response `{timestamp, messages: [{hash, timestamp}]}`) only
+   starts after `ZlingshotService.zoom` returns a zoom server address, which
+   also makes the client open a raw socket (needs a socket proxy in Ruffle).
+   Worth doing only together with other Zlingshot-driven features.
 11. Next: keep play-testing (later quests, visiting a neighbour, invasions,
    Hire Friends) and note what breaks.
 
