@@ -207,13 +207,19 @@ Tested with Ruffle 0.7.1 (unpkg) in Brave/Chromium on Linux, branch `ruffle-supp
    QW126 (`_item: AU06`). Tests: `test_progress_move`,
    `test_perform_world_response_move_progresses_quest`.
 9. **2026-10-26, black screen while building Small Cottages (Q3030).** The
-   game tried to show the "Out of Resources" popup (wood/oil/energy were low)
-   but `assets/displays/dialogs/PU_OutOfResources.swf` returns 404: it is
-   listed in the `assetIndex` (hash `a1892aee9288742cc954d2ddd4ed117b`) but
-   exists in no asset folder of this repo. The screen dims for the popup and
-   stays dark. Not Ruffle- or server-related; Flash Player would hit the same
-   404. The blocked click was never sent, so the server's Q3030 progress (2/3)
-   was correct. Workaround: reload, gather resources, avoid running out.
+   third cottage would have taken population from 270 to 310, over the
+   population cap of 300. `SimpleClickState.onClick` then refuses the click
+   (`checkWorkers()`: `maxWorkers + item.workers > maxWorkersCap`) and pushes
+   `RequirementsPopup(RequirementsPopupInfoPopCap)`. That popup (and
+   `OutOfUnitsPopup`) uses `assets/displays/dialogs/PU_OutOfResources.swf`,
+   which returns 404: it is listed in the `assetIndex` (hash
+   `a1892aee9288742cc954d2ddd4ed117b`) but exists in no asset folder of this
+   repo. The screen dims for the popup and stays dark. Not Ruffle- or
+   server-related; Flash Player would hit the same 404. The refused click was
+   never sent, so the server's Q3030 progress (2/3) was correct.
+   Workaround: reload, then raise the cap with a government building
+   (`yield -workersCap`: Parliament +100, Executive Mansion +150 at level 5,
+   Federal Courthouse +200 at level 7, ...) before building more houses.
    Possible fix later: a stand-in SWF with the instance names the popup class
    expects, or the original from another archive.
 10. Next: keep play-testing (later quests, visiting a neighbour, invasions,
@@ -224,7 +230,7 @@ Tested with Ruffle 0.7.1 (unpkg) in Brave/Chromium on Linux, branch `ruffle-supp
 | Asset | Effect |
 |---|---|
 | `assets/game/villains/defeats/VBossCPD_04A.swf` | Victory popup after beating Captain Krunsch has no villain image |
-| `assets/displays/dialogs/PU_OutOfResources.swf` | "Out of Resources" popup never appears; screen stays dimmed until reload |
+| `assets/displays/dialogs/PU_OutOfResources.swf` | Population-cap and out-of-units popups (`RequirementsPopup`, `OutOfUnitsPopup`) never appear; screen stays dimmed until reload |
 
 Dev gotcha: the Werkzeug reloader (`--debug`) can miss a second edit made
 within ~1 s of the first, leaving the server on half-updated code. If a fix
