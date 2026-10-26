@@ -1070,7 +1070,7 @@ def post_gateway():
         elif reqq.functionName == 'PVPService.immunityExtend':
             resps.append(dummy_response())
         elif reqq.functionName == 'PVPService.immunityStart':
-            resps.append(dummy_response())
+            resps.append(immunity_start_response())
         elif reqq.functionName == 'PVPService.occupationPlace':
             resps.append(occupation_place_response(reqq.params))
         elif reqq.functionName == 'PVPService.pillage':
@@ -2594,6 +2594,20 @@ def get_cash_cost(item, amount):
                 le_discount = .10
 
     return math.ceil(cash_cost * amount * (1 - le_discount))
+
+
+def immunity_start_response():
+    meta = {"newPVE": 0}
+    # Same shape the client builds in PVPManager.startImmunity; initUser sends it back after a reload
+    durations = game_settings['settings']['gamesettings']['-PVPImmunityBaseDurations'].split(',')
+    duration = parse_duration(durations[session['user_object'].get("immunityTimeVariant", 0)])
+    session['user_object']["pvp"]["immunity"] = {
+        "expTS": int(datetime.now().timestamp() + duration),
+        "hIDs": [session['user_object']["userInfo"]["player"]["uid"]]}
+    handle_quest_progress(meta, progress_action("startImmunity"))
+    immunity_start_response = {"errorType": 0, "userId": 1, "metadata": meta,
+                               "data": []}
+    return immunity_start_response
 
 
 def select_response(param):

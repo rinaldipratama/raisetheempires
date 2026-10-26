@@ -1,5 +1,6 @@
 import json
 import zlib
+from datetime import datetime
 
 import pytest
 from flask import Flask, session, request
@@ -412,6 +413,29 @@ def test_perform_world_response_move_progresses_quest(monkeypatch):
         q0805 = next(q for q in session['quests'] if q['name'] == 'Q0805')
         assert q0805['complete'] is True
         assert any(q['name'] == 'Q0805' and q['complete'] for q in resp['metadata']['QuestComponent'])
+
+
+def test_immunity_start_response_progresses_quest(monkeypatch):
+    monkeypatch.setattr(empires_server, "get_saves", lambda: [])
+
+    with app.test_request_context():
+        session.sid = "0"
+        session['user_object'] = empires_server.init_user()
+        session['quests'] = [{'name': 'Q0810', 'complete': False, 'expired': False, 'progress': [0], 'completedTasks': 0}]
+        session['population'] = 0
+
+        # Q0810 "Invasion Protection": declare neutrality at the World Embassy (PVPService.immunityStart)
+        before = datetime.now().timestamp()
+        resp = empires_server.immunity_start_response()
+
+        q0810 = next(q for q in session['quests'] if q['name'] == 'Q0810')
+        assert q0810['complete'] is True
+        assert any(q['name'] == 'Q0810' and q['complete'] for q in resp['metadata']['QuestComponent'])
+
+        # Stored like the client's PVPManager.startImmunity so initUser restores the neutrality timer
+        immunity = session['user_object']["pvp"]["immunity"]
+        assert immunity["hIDs"] == [session['user_object']["userInfo"]["player"]["uid"]]
+        assert int(before) + 18 * 3600 <= immunity["expTS"] <= datetime.now().timestamp() + 18 * 3600
 
 
 def test_out_of_resources_dialog_stand_in():

@@ -222,7 +222,21 @@ Tested with Ruffle 0.7.1 (unpkg) in Brave/Chromium on Linux, branch `ruffle-supp
    Federal Courthouse +200 at level 7, ...) before building more houses.
    Possible fix later: a stand-in SWF with the instance names the popup class
    expects, or the original from another archive.
-10. Next: keep play-testing (later quests, visiting a neighbour, invasions,
+10. **2026-10-27, quest Q0810 "Invasion Protection".** Declaring neutrality at
+   the World Embassy sends `PVPService.immunityStart`, which the server answered
+   with a dummy response, so the quest's only task (`_action: startImmunity`)
+   never progressed. The neutrality timer was also lost on reload: the client
+   computes immunity locally (`PVPManager.startImmunity`: `expTS` = now +
+   `PVPImmunityBaseDurations[immunityTimeVariant]`, `hIDs` = [player uid]) and
+   only restores it from `user_object.pvp.immunity` in initUser, which the
+   server always sent as `[]`. Not Ruffle-related. Fix:
+   `immunity_start_response()` stores `{expTS, hIDs}` in `pvp.immunity` and
+   progresses `startImmunity` quest tasks. Test:
+   `test_immunity_start_response_progresses_quest`. Still a stub:
+   `PVPService.immunityExtend` (hiring friends to extend neutrality). Same
+   pattern as Q0805: the emulator still has many stubbed services, so expect
+   more quests like this.
+11. Next: keep play-testing (later quests, visiting a neighbour, invasions,
    Hire Friends) and note what breaks.
 
 ### Missing original assets (404s seen so far)
