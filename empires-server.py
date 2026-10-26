@@ -1900,6 +1900,7 @@ def perform_world_response(params):
     if step == "move":
         lookup_object(id)["position"] = position
         print("Object", id, "moved to", position)
+        handle_quest_progress(meta, progress_move(lookup_item_by_name(item_name)))
 
     if step == "place":
         if not from_inventory:

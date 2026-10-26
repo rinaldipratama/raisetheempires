@@ -390,6 +390,29 @@ def test_post_gateway(monkeypatch):
         assert remoting.decode(response_result.data).bodies[0][1].body['data'] == [{'errorType': 0, 'userId': 1, 'metadata': {'newPVE': 0}, 'data': []}]
 
 
+def test_perform_world_response_move_progresses_quest(monkeypatch):
+    monkeypatch.setattr(empires_server, "get_saves", lambda: [])
+
+    with app.test_request_context():
+        session.sid = "0"
+        session['user_object'] = empires_server.init_user()
+        session['user_object']["userInfo"]["world"]["objects"].append(
+            {'id': 10025, 'itemName': 'infantry01', 'position': '60,60,0', 'referenceItem': None, 'state': 0})
+        session['quests'] = [{'name': 'Q0805', 'complete': False, 'expired': False, 'progress': [0], 'completedTasks': 0}]
+        session['population'] = 0
+
+        # Q0805 "Defensive Positions": move an army unit (infantry01 is subtype army)
+        resp = empires_server.perform_world_response(
+            ['move', pyamf.ASObject({'id': 10025, 'position': '58,56,0', 'itemName': 'infantry01'}),
+             [{'x': 58, 'y': 56, 'direction': 0}]])
+
+        assert resp['data'] == {'id': 10025}
+        assert empires_server.lookup_object(10025)['position'] == '58,56,0'
+        q0805 = next(q for q in session['quests'] if q['name'] == 'Q0805')
+        assert q0805['complete'] is True
+        assert any(q['name'] == 'Q0805' and q['complete'] for q in resp['metadata']['QuestComponent'])
+
+
 # ruffle.html passes the app_url FlashVar "<origin>/", so the client requests these files from the site root
 @pytest.mark.parametrize("path, method, endpoint", [
     ('/flashservices/gateway.php', 'POST', 'post_gateway'),

@@ -180,8 +180,34 @@ Tested with Ruffle 0.7.1 (unpkg) in Brave/Chromium on Linux, branch `ruffle-supp
    indicator, `PlayerStatsUIItem.pending_mc`, keeps spinning).
    Fix: `unshare_amf_values()` copies the response so no object is shared
    before encoding. Test: `test_post_gateway_response_without_amf0_references`.
-6. Next: play-test core actions (collect, build/move, quests, a battle,
-   visiting a neighbour, save/reload) and note what breaks.
+6. **2026-10-21, memory.** Tab memory grows steadily even while idle
+   (~700 MB after load → 1.5 GB and rising). Likely cause: the game relies on
+   weak references (1305 `addEventListener(..., false, 0, true)` calls in 404
+   files, 17 `new Dictionary(true)`), and Ruffle has no weak GC references yet:
+   `useWeakReference` is ignored (`event_dispatcher.rs`: "TODO: If we ever get
+   weak GC references, we should respect `useWeakReference`") and weak-key
+   Dictionaries are a stub (console: "Encountered stub: AVM2
+   flash.utils.Dictionary constructor with weak keys"). Objects Flash Player
+   would collect stay alive. Workaround: reload the page now and then
+   (progress is server-side). Real fix belongs in Ruffle.
+7. **2026-10-21, first battle.** The tutorial battle against Captain Krunsch
+   works end to end in Ruffle (turns, Victory popup, XP/coins/Liberty Bond
+   reward). The victory popup's villain image is missing:
+   `assets/game/villains/defeats/VBossCPD_04A.swf` returns 404 because the
+   file is not in any asset folder of this repo (only defeats 03, 05, 07, 08,
+   10, 11, 14, 15 exist). Not Ruffle-related; Flash Player would get the same
+   404.
+8. **2026-10-26, quest Q0805 "Defensive Positions".** The client shows
+   "Goal Completed" after moving an army unit, but the quest is back after a
+   reload. Not Ruffle-related: the server's quest engine never implemented the
+   `move` task action (only listed in a comment), so `performAction` `move`
+   updated the position without progressing quests. Fix: `progress_move()` in
+   `quest_engine.py` (matches optional `_item` / `_subtype`), called from the
+   `move` step in `perform_world_response`. Covers Q0805 (`_subtype: army`) and
+   QW126 (`_item: AU06`). Tests: `test_progress_move`,
+   `test_perform_world_response_move_progresses_quest`.
+9. Next: keep play-testing (later quests, visiting a neighbour, invasions,
+   Hire Friends) and note what breaks.
 
 Dev gotcha: the Werkzeug reloader (`--debug`) can miss a second edit made
 within ~1 s of the first, leaving the server on half-updated code. If a fix

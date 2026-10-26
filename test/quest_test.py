@@ -102,6 +102,19 @@ def test_activate_sequels():
             {'name': 'Q1140', 'complete': False, 'expired': False, 'progress': [0], 'completedTasks': 0}]
 
 
+def test_progress_move():
+    army_unit = {'-code': 'U01', '-name': 'infantry01', '-subtype': 'army'}
+    building = {'-code': 'B07', '-name': 'house01', '-subtype': 'residence'}
+    move_army_task = {'_action': 'move', '_subtype': 'army', '_total': '1'}  # Q0805
+    move_item_task = {'_action': 'move', '_item': 'AU06', '_total': '1'}  # QW126
+
+    assert quest_engine.progress_move(army_unit)(move_army_task, 0, 0, {})
+    assert not quest_engine.progress_move(building)(move_army_task, 0, 0, {})
+    assert quest_engine.progress_move({'-code': 'AU06', '-subtype': 'army'})(move_item_task, 0, 0, {})
+    assert not quest_engine.progress_move(army_unit)(move_item_task, 0, 0, {})
+    assert not quest_engine.progress_move(army_unit)({'_action': 'place', '_total': '1'}, 0, 0, {})
+
+
 def test_handle_quest_progress():
     with app.test_request_context():
         setup_session()

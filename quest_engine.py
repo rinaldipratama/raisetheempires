@@ -294,6 +294,12 @@ def progress_place_unit(state, state_machine, game_item, step, *state_args):
         task["_action"] in ["countPlaced"] and task.get("_unitClass", "NONE") == game_item.get('-unitClass', "OTHER") and progress < int(task["_total"]) and step == "place"
 
 
+def progress_move(game_item):
+    return all_lambda(progress_action("move"),
+                      progress_parameter_implies("_item", game_item['-code']),
+                      progress_parameter_implies("_subtype", game_item.get('-subtype')))
+
+
 def progress_state(state, state_machine, game_item, step, *state_args):
     return lambda task, progress, i, *args: \
         task["_action"] in ["state", "countState"] and '-stateName' in state and state['-stateName'] in task["_state"].split(',')  and ("_item" not in task or task["_item"] == game_item['-code'])\
