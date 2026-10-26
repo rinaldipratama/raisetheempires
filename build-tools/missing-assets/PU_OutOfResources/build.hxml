@@ -1,0 +1,6 @@
+# Run from this directory: haxe build.hxml
+-cp src
+-swf ../../../assets/sol_assets_octdict/assets/displays/dialogs/PU_OutOfResources.swf
+-swf-version 10
+-D swf-header=600:420:30:F5EBD7
+MainScreen_mc

@@ -227,10 +227,14 @@ Tested with Ruffle 0.7.1 (unpkg) in Brave/Chromium on Linux, branch `ruffle-supp
 
 ### Missing original assets (404s seen so far)
 
-| Asset | Effect |
-|---|---|
-| `assets/game/villains/defeats/VBossCPD_04A.swf` | Victory popup after beating Captain Krunsch has no villain image |
-| `assets/displays/dialogs/PU_OutOfResources.swf` | Population-cap and out-of-units popups (`RequirementsPopup`, `OutOfUnitsPopup`) never appear; screen stays dimmed until reload |
+Searched without success (2026-10-26): the Wayback Machine has only 10 files
+from `empire-s.assets.zgncdn.com` (8 PNG, 2 XML, no SWF), and
+`AcidCaos/empires-revision-history` has 32 SWFs but neither of these.
+
+| Asset | Effect | Status |
+|---|---|---|
+| `assets/game/villains/defeats/VBossCPD_04A.swf` | Victory popup after beating Captain Krunsch has no villain image | Missing (cosmetic) |
+| `assets/displays/dialogs/PU_OutOfResources.swf` | Population-cap and out-of-units popups (`RequirementsPopup`, `OutOfUnitsPopup`) never appear; screen stays dimmed until reload | Stand-in built with Haxe, see `build-tools/missing-assets/`; verified 2026-10-27 in Ruffle ("Too Many Houses!" popup shows game texts and icons) |
 
 Dev gotcha: the Werkzeug reloader (`--debug`) can miss a second edit made
 within ~1 s of the first, leaving the server on half-updated code. If a fix

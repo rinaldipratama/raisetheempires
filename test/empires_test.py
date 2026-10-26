@@ -1,4 +1,5 @@
 import json
+import zlib
 
 import pytest
 from flask import Flask, session, request
@@ -411,6 +412,17 @@ def test_perform_world_response_move_progresses_quest(monkeypatch):
         q0805 = next(q for q in session['quests'] if q['name'] == 'Q0805')
         assert q0805['complete'] is True
         assert any(q['name'] == 'Q0805' and q['complete'] for q in resp['metadata']['QuestComponent'])
+
+
+def test_out_of_resources_dialog_stand_in():
+    # The original PU_OutOfResources.swf was never recovered; build-tools/missing-assets has a stand-in.
+    # RequirementsPopup and OutOfUnitsPopup look these names up in it.
+    swf = TEST_DIR / '..' / 'assets' / 'sol_assets_octdict' / 'assets' / 'displays' / 'dialogs' / 'PU_OutOfResources.swf'
+    data = swf.read_bytes()
+    body = zlib.decompress(data[8:]) if data[:3] == b'CWS' else data[8:]
+    for name in [b'MainScreen_mc', b'frame_mc', b'accept_bt', b'generic_tf', b'exit_bt', b'title_tf', b'bubble_tf',
+                 b'desc_tf', b'steps_2_mc', b'steps_3_mc', b'icon0_mc', b'icon1_mc', b'icon2_mc']:
+        assert name in body, name
 
 
 # ruffle.html passes the app_url FlashVar "<origin>/", so the client requests these files from the site root
