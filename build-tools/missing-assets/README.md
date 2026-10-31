@@ -37,3 +37,27 @@ MainScreen_mc
 
 Asset SWFs are loaded into the game's `ApplicationDomain`, so class names here
 must not clash with the game's own classes.
+
+## VillainDefeats
+
+Twelve villain defeat clips (seven `assets/game/villains/defeats/VBossCPD_*A.swf`,
+five `assets/game/villains/Campaign02_Defeats/*_Defeat.swf`) shown in the victory
+popup after beating a campaign villain. Without them the villain spot stays empty.
+
+```bash
+cd build-tools/missing-assets/VillainDefeats
+python build.py
+```
+
+The victory popup (`BattleBasePopup`) loads the SWF and adds its root clip. The
+stand-in root draws a round frame and fills it with the villain's portrait
+(`Villains01.swf/VP_04.png`, `Campaign02_Villains.swf/ZombiePolaroid_124.png`,
+...). No game art is copied into these SWFs.
+
+The game loads asset SWFs with `Loader.loadBytes` and no `LoaderContext`, so each
+gets its own child `ApplicationDomain` and the portrait classes are not visible
+from the stand-in. It fetches the portrait like the game's `SWFImageLoader`:
+`Zlab.resourceManager.load(...)` (cached) and `SWFResource.getAssetClass(...)`.
+
+`build.py` makes a per-villain class the SWF's root via the `SymbolClass` tag, so
+the clip draws itself when the game instantiates it.

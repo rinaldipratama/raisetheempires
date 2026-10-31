@@ -265,7 +265,7 @@ from `empire-s.assets.zgncdn.com` (8 PNG, 2 XML, no SWF), and
 
 | Asset | Effect | Status |
 |---|---|---|
-| `assets/game/villains/defeats/VBossCPD_04A.swf` | Victory popup after beating Captain Krunsch has no villain image | Missing (cosmetic) |
+| `assets/game/villains/defeats/VBossCPD_{01,02,04,06,09,12,13}A.swf`, `assets/game/villains/Campaign02_Defeats/{AbandonedSoldier,FlameThrowerChick,NativeTikiGuy,VooDooDoctor,ZombieSoldier}_Defeat.swf` | Victory popup after beating these villains (e.g. Captain Krunsch) has no villain image | Stand-ins built with Haxe (portrait borrowed at runtime from the villain SWF), see `build-tools/missing-assets/VillainDefeats`; verified 2026-10-31 in Ruffle ("Captain Krunsch Defeated!" shows his portrait); not in the Wayback Machine (checked by path and hash, 2026-10-27) |
 | `assets/displays/dialogs/PU_OutOfResources.swf` | Population-cap and out-of-units popups (`RequirementsPopup`, `OutOfUnitsPopup`) never appear; screen stays dimmed until reload | Stand-in built with Haxe, see `build-tools/missing-assets/`; verified 2026-10-27 in Ruffle ("Too Many Houses!" popup shows game texts and icons) |
 
 Dev gotcha: the Werkzeug reloader (`--debug`) can miss a second edit made
