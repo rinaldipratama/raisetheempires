@@ -77,3 +77,31 @@ def test_click_next_state_finish_building():
                                      {'name': 'QRUX1', 'complete': False, 'expired': False, 'progress': [1, 0], 'completedTasks': 1}]
         session['user_object']["userInfo"]["player"]['lastEnergyCheck'] = 0
         assert session['user_object']["userInfo"]["player"] == {'xp': 1, 'energy': 25.0, 'cash': 0, 'socialXpGood': 0, 'socialXpBad': 0, 'level': 1, 'energyMax': 25, 'playerResourceType': 3, 'lastEnergyCheck': 0, 'inventory': {'items': {}}}
+
+
+def test_click_next_state_level_up_keeps_overfilled_energy():
+    with app.test_request_context():
+        session['user_object'] = {}
+        session['user_object']["userInfo"] = {}
+        session['user_object']["userInfo"]["world"] = {"rewardRandSeedZ": 0, "rewardRandSeedW": 0}
+        session['user_object']["userInfo"]["world"]["objects"] = [{
+            "id": 10000,
+            "itemName": "Small Island Hut",
+            "position": "50,50,0",
+            "referenceItem": None,
+            "state": 5
+        }]
+        session['user_object']["userInfo"]["world"]["resources"] = {"coins": 0, "energy": 0, "oil": 0, "wood": 0, "aluminum": 0, "copper": 0, "gold": 0, "iron": 0, "uranium": 0}
+        session['user_object']["userInfo"]["world"]["resourceOrder"] = ["aluminum", "copper", "gold", "iron", "uranium"]
+        session['user_object']["userInfo"]["world"]["research"] = {}
+        # level 9 one xp short of level 10 (cap 31), with energy overfilled past the cap
+        session['user_object']["userInfo"]["player"] = {"xp": 426, "energy": 40, "cash": 0, "socialXpGood": 0, "socialXpBad": 0, "level": 9, "energyMax": 31, "playerResourceType": 3, "lastEnergyCheck": 0}
+        session['user_object']["userInfo"]["player"]["inventory"] = {"items":{}}
+        session['user_object']["experiments"] = {}
+        session["quests"] = []
+
+        state_machine.click_next_state(True, 10000, {}, "setState", None, cancel=None)
+
+        player = session['user_object']["userInfo"]["player"]
+        assert (player['level'], player['xp'], player['energyMax']) == (10, 427, 31)
+        assert player['energy'] == 39  # 40 - 1 for finishing, not reset down to the cap

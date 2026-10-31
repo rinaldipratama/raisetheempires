@@ -155,3 +155,33 @@ def test_handle_quest_progress():
                            {'name': 'Q6016', 'complete': True, 'expired': False, 'progress': [1], 'completedTasks': 1},
                            {'name': 'Q0531', 'complete': True, 'expired': False, 'progress': [1], 'completedTasks': 1},
                            {'name': 'Q0516', 'complete': True, 'expired': False, 'progress': [1], 'completedTasks': 1}]
+
+
+def setup_level_up_session(level, xp, energy):
+    session["quests"] = []
+    session['user_object'] = {"experiments": {}, "userInfo": {}}
+    session['user_object']["userInfo"]["player"] = {"xp": xp, "energy": energy, "cash": 0, "socialXpGood": 0, "socialXpBad": 0, "level": level, "energyMax": 0, "playerResourceType": 3, "lastEnergyCheck": 0, "inventory": {"items": {}}}
+    session['user_object']["userInfo"]["world"] = {"resourceOrder": ["aluminum", "copper", "gold", "iron", "uranium"]}
+    session['user_object']["userInfo"]["world"]["resources"] = {"coins": 0, "energy": energy, "oil": 0, "wood": 0, "aluminum": 0, "copper": 0, "gold": 0, "iron": 0, "uranium": 0}
+
+
+def test_do_rewards_level_up_energy():
+    with app.test_request_context():
+        setup_level_up_session(level=9, xp=426, energy=5)
+        quest_engine.do_rewards("Quest", [{"-type": "xp", "-count": "1"}], {})
+        player = session['user_object']["userInfo"]["player"]
+        assert (player['level'], player['energy'], player['energyMax']) == (10, 31, 31)  # refilled to the cap
+
+        setup_level_up_session(level=9, xp=426, energy=40)
+        quest_engine.do_rewards("Quest", [{"-type": "xp", "-count": "1"}], {})
+        player = session['user_object']["userInfo"]["player"]
+        assert (player['level'], player['energy'], player['energyMax']) == (10, 40, 31)  # overfill kept
+
+
+def test_do_rewards_level_up_past_energy_cap_table():
+    with app.test_request_context():
+        level_67_xp = int([l for l in quest_engine.game_settings['settings']['levels']['level'] if l['-num'] == '67'][0]['-requiredXP'])
+        setup_level_up_session(level=66, xp=level_67_xp - 1, energy=0)
+        quest_engine.do_rewards("Quest", [{"-type": "xp", "-count": "1"}], {})
+        player = session['user_object']["userInfo"]["player"]
+        assert (player['level'], player['energyMax']) == (67, 46)  # energycaps ends at level 66, keep its last cap

@@ -276,7 +276,20 @@ Tested with Ruffle 0.7.1 (unpkg) in Brave/Chromium on Linux, branch `ruffle-supp
    starts after `ZlingshotService.zoom` returns a zoom server address, which
    also makes the client open a raw socket (needs a socket proxy in Ruffle).
    Worth doing only together with other Zlingshot-driven features.
-11. Next: keep play-testing (later quests, visiting a neighbour, invasions,
+11. **2026-10-31, energy cap after level 10.** The client showed 35 max
+   energy right after reaching level 10, 31 after a reload. Not Ruffle-related:
+   on level up the client computes its own cap (`PlayerEnergy.updateMaxEnergy`:
+   `startingEnergyMax` 25 + `energyGainedPerLevel` × (level − 1) = 34) and fills
+   energy to `max(energy, cap)`, while the server uses the `energycaps` table
+   from gameSettings (31 at level 10), which the client never reads. Kept the
+   server table (Zynga's server-side data, probably the post-`energyMaxCapCutoffDate`
+   curve), so the client's number is only right until the next reload. Fixed two
+   server bugs on the way: level up set energy to the cap, taking away overfilled
+   energy, and quest-reward level ups past level 66 (end of `energycaps`) crashed.
+   Both paths now use `level_up_energy()` in `game_settings.py`. Tests:
+   `test_click_next_state_level_up_keeps_overfilled_energy`,
+   `test_do_rewards_level_up_energy`, `test_do_rewards_level_up_past_energy_cap_table`.
+12. Next: keep play-testing (later quests, visiting a neighbour, invasions,
    Hire Friends) and note what breaks.
 
 ### Missing original assets (404s seen so far)

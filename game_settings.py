@@ -190,6 +190,16 @@ def lookup_wave(set_name, wave_index):
     return wave
 
 
+def level_up_energy(player, level):
+    # energycaps ends at level 66, later levels keep its last cap
+    caps = game_settings['settings']['energycaps']['energycap']
+    energy_cap = int(next((e['-cap'] for e in caps if e['-level'] == str(level)), caps[-1]['-cap']))
+    # refill to the new cap but keep overfilled energy, like the client's level up (Player.as)
+    player['energy'] = max(player['energy'], energy_cap)
+    player['energyMax'] = energy_cap
+    return energy_cap
+
+
 def replenish_energy():
     player = session['user_object']["userInfo"]["player"]
     current_energy_max = max(player["energy"], player["energyMax"])  # overfill possible
