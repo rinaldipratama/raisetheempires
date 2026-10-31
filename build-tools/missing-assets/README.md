@@ -38,6 +38,43 @@ MainScreen_mc
 Asset SWFs are loaded into the game's `ApplicationDomain`, so class names here
 must not clash with the game's own classes.
 
+## UnitsPurchaseDialog
+
+`assets/displays/screens/UnitsPurchaseDialog.swf`, the "Buy Units" dialog in
+battle setup (buy units with cash). Without it the screen stays dimmed.
+
+```bash
+cd build-tools/missing-assets/UnitsPurchaseDialog
+haxe build.hxml
+```
+
+`UnitsPurchaseDialog` hands `MainScreen_mc` to `ChallengePremiumUnitsGrid`, a
+5 x 2 `GridScreen` whose cards come from the exported class `PremiumUnitCard`
+(`GridSlot.createSlot` uses `new PremiumUnitCard().card_mc`). Contract:
+
+```
+MainScreen_mc
+├── background_mc                     width/height size and center the dialog
+├── caption_tf, header_tf             texts set by the game
+├── exit_bt                           close
+├── origin_mc                         grid anchor position
+├── anchor_mc                         cards are added here; slides a page at a time
+├── mask_mc                           clips anchor_mc to 5 x 2 cards
+└── arrowLt_bt, arrowRt_bt            paging
+PremiumUnitCard
+└── card_mc                           cards are placed at index × sizer_mc size
+    ├── sizer_mc, selected_mc, highlightSelect_mc
+    ├── buy_bt └── generic_tf         ZGameButton "Buy for N"
+    └── unitCard_mc
+        ├── itemName_tf, strengthValue_tf, energyValue_tf, cost_tf, discount_tf, levelInfo_tf
+        ├── icon, strengthIcon_mc, energyIcon_mc, cashIcon_mc   fl.containers.UILoader instances
+        └── locked_mc, strengthBar_mc, secondaryCard_mc
+```
+
+`card_mc` and `unitCard_mc` are plain `MovieClip`s with their children set as
+dynamic properties, because the game also probes optional children
+(`tierRating_mc`, `doubleXP_mc`, ...) that would throw on a sealed Haxe class.
+
 ## VillainDefeats
 
 Twelve villain defeat clips (seven `assets/game/villains/defeats/VBossCPD_*A.swf`,

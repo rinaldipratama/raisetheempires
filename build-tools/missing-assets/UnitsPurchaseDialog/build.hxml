@@ -1,0 +1,7 @@
+# Run from this directory: haxe build.hxml
+-cp src
+-swf ../../../assets/sol_assets_octdict/assets/displays/screens/UnitsPurchaseDialog.swf
+-swf-version 10
+-D swf-header=780:470:30:F5EBD7
+MainScreen_mc
+PremiumUnitCard

@@ -509,6 +509,19 @@ def test_out_of_resources_dialog_stand_in():
         assert name in body, name
 
 
+def test_units_purchase_dialog_stand_in():
+    # The original UnitsPurchaseDialog.swf ("Buy Units" in battle setup) was never recovered either.
+    # UnitsPurchaseDialog, the grid classes and the unit card slots look these names up in it.
+    swf = TEST_DIR / '..' / 'assets' / 'sol_assets_octdict' / 'assets' / 'displays' / 'screens' / 'UnitsPurchaseDialog.swf'
+    data = swf.read_bytes()
+    body = zlib.decompress(data[8:]) if data[:3] == b'CWS' else data[8:]
+    for name in [b'MainScreen_mc', b'background_mc', b'caption_tf', b'exit_bt', b'origin_mc', b'anchor_mc', b'mask_mc',
+                 b'arrowLt_bt', b'arrowRt_bt', b'PremiumUnitCard', b'card_mc', b'sizer_mc', b'buy_bt', b'generic_tf',
+                 b'unitCard_mc', b'itemName_tf', b'icon', b'locked_mc', b'levelInfo_tf', b'strengthBar_mc',
+                 b'strengthValue_tf', b'energyValue_tf', b'cashIcon_mc', b'discount_tf', b'secondaryCard_mc']:
+        assert name in body, name
+
+
 def test_purchase_energy_refill_response(monkeypatch):
     monkeypatch.setattr(empires_server, "get_saves", lambda: [])
 
