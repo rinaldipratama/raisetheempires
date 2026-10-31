@@ -30,6 +30,7 @@ from save_migration import migrate, is_0_08a_preview
 from builtins import print
 from time import sleep
 from datetime import timedelta
+from urllib.parse import urlparse
 
 from flask import Flask, render_template, send_from_directory, request, Response, make_response, redirect
 try:
@@ -245,6 +246,16 @@ def get_sessions_info(saves):
     return response
 
 
+GAME_PAGES = ("/home.html", "/nodebug.html", "/ruffle.html")
+
+
+def redirect_to_game_page():
+    # Back to the game page the player came from (e.g. "Get Empire Points" on ruffle.html), else home.html
+    referrer = urlparse(request.referrer or "")
+    same_site = referrer.netloc == request.host
+    return make_response(redirect(referrer.path if same_site and referrer.path in GAME_PAGES else "/home.html"))
+
+
 @app.route("/gazillionaire", methods=['GET', 'POST'])
 def more_money():
     if 'user_object' in session:
@@ -252,7 +263,7 @@ def more_money():
         player = session['user_object']["userInfo"]["player"]
         player['cash'] += 10000
         session['saved'] = str(session.get('saved', "")) +  "gazillionaire"
-        response = make_response(redirect('/home.html'))
+        response = redirect_to_game_page()
         return response
     else:
         return ("Nope! You don't have a game session yet", 403)
@@ -276,7 +287,7 @@ def deprogress_battle_map():
             deprogress_battle_map()
         else:
             set_active_island_by_map(map, island - 1)
-        response = make_response(redirect('/home.html'))
+        response = redirect_to_game_page()
         return response
     else:
         return ("Nope! You don't have a game session yet", 403)
@@ -293,7 +304,7 @@ def change_seed(w, z):
         print("Seed change", prev_seed, "=>", str(world["randSeedW"]) + ', ' + str(world["randSeedZ"]))
 
         session['saved'] = str(session.get('saved', "")) +  "seed"
-        response = make_response(redirect('/home.html'))
+        response = redirect_to_game_page()
         return response
     else:
         return ("Nope! You don't have a game session yet", 403)
@@ -327,7 +338,7 @@ def patch_user(path, value):
             dictionary[path.split('/')[-1]] = value
 
             session['saved'] = str(session.get('saved', "")) + "patch"
-            response = make_response(redirect('/home.html'))
+            response = redirect_to_game_page()
             return response
         else:
             return ("Nope! Disallowed patch root", 403)
@@ -348,7 +359,7 @@ def patch_user_list(path, i, value):
             dictionary[i] = value
 
             session['saved'] = str(session.get('saved', "")) + "patch"
-            response = make_response(redirect('/home.html'))
+            response = redirect_to_game_page()
             return response
         else:
             return ("Nope! Disallowed patch root", 403)
@@ -366,7 +377,7 @@ def unlock_quest(value):
         merge_quest_progress(new_quests, session['quests'], "session quest")
         session['saved'] = str(session.get('saved', "")) + "unlock"
 
-        response = make_response(redirect('/home.html'))
+        response = redirect_to_game_page()
         return response
     else:
         return ("Nope! You don't have a game session yet", 403)
@@ -381,7 +392,7 @@ def complete_quest(value):
         handle_quest_progress(meta, progress_quest(value))
         session['saved'] = str(session.get('saved', "")) + "complete"
 
-        response = make_response(redirect('/home.html'))
+        response = redirect_to_game_page()
         return response
     else:
         return ("Nope! You don't have a game session yet", 403)
@@ -394,7 +405,7 @@ def remove_quest(value):
         session['quests'] = [e for e in session['quests'] if e["name"] != value]
         session['saved'] = str(session.get('saved', "")) + "remove"
 
-        response = make_response(redirect('/home.html'))
+        response = redirect_to_game_page()
         return response
     else:
         return ("Nope! You don't have a game session yet", 403)
@@ -2519,9 +2530,10 @@ def purchase_energy_refill_response(param):
     world = session['user_object']["userInfo"]["world"]
     resources = world['resources']
 
-    player['energy'] += int(player['energyMax']-player['energy'])  # TODO put item in inventory (storable?)
-
-    player['cash'] -= int(player['energyMax']-player['energy'])
+    # BuyEnergyCard charges one cash per missing energy point; work it out before refilling
+    missing_energy = max(int(player['energyMax'] - player['energy']), 0)
+    player['energy'] += missing_energy  # TODO put item in inventory (storable?)
+    player['cash'] -= missing_energy
 
     purchase_energy_refill_response = {"errorType": 0, "userId": 1, "metadata": {"newPVE": 0},
                       "data": []}

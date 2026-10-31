@@ -1,4 +1,5 @@
 import json
+import xml.etree.ElementTree as ET
 import zlib
 from datetime import datetime
 
@@ -506,6 +507,46 @@ def test_out_of_resources_dialog_stand_in():
     for name in [b'MainScreen_mc', b'frame_mc', b'accept_bt', b'generic_tf', b'exit_bt', b'title_tf', b'bubble_tf',
                  b'desc_tf', b'steps_2_mc', b'steps_3_mc', b'icon0_mc', b'icon1_mc', b'icon2_mc']:
         assert name in body, name
+
+
+def test_purchase_energy_refill_response(monkeypatch):
+    monkeypatch.setattr(empires_server, "get_saves", lambda: [])
+
+    with app.test_request_context():
+        session.sid = "0"
+        session['user_object'] = empires_server.init_user()
+        player = session['user_object']["userInfo"]["player"]
+        player.update({"energy": 3, "energyMax": 25, "cash": 50})
+
+        # BuyEnergyCard: a refill costs one cash per missing energy point
+        empires_server.purchase_energy_refill_response({'code': 'ERX', 'useCash': True, 'amount': 1})
+
+        assert player["energy"] == 25
+        assert player["cash"] == 28
+
+
+@pytest.mark.parametrize("referrer, location", [
+    ('http://127.0.0.1:5005/ruffle.html', '/ruffle.html'),
+    ('http://127.0.0.1:5005/nodebug.html', '/nodebug.html'),
+    ('http://127.0.0.1:5005/home.html', '/home.html'),
+    ('http://127.0.0.1:5005/save-editor', '/home.html'),
+    ('https://example.com/ruffle.html', '/home.html'),
+    (None, '/home.html'),
+])
+def test_redirect_to_game_page(referrer, location):
+    headers = {'Referer': referrer} if referrer else {}
+    with app.test_request_context(base_url='http://127.0.0.1:5005', headers=headers):
+        assert empires_server.redirect_to_game_page().location == location
+
+
+def test_villain_defeat_images_exist():
+    # Seven original defeat SWFs were never recovered; build-tools/missing-assets/VillainDefeats has stand-ins.
+    # The victory popup loads them as SWFs and shows their root clip; a 404 leaves the villain slot empty.
+    root = ET.parse(TEST_DIR / '..' / 'assets' / '29oct2012' / 'gameSettings_with_fixes.xml').getroot()
+    defeats = {image.get('url') for image in root.iter('image') if image.get('name') == 'defeat'}
+    assert 'assets/game/villains/defeats/VBossCPD_04A.swf' in defeats
+    missing = [url for url in defeats if not (TEST_DIR / '..' / 'assets' / 'sol_assets_octdict' / url).exists()]
+    assert missing == []
 
 
 # ruffle.html passes the app_url FlashVar "<origin>/", so the client requests these files from the site root
