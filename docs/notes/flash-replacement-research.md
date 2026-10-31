@@ -190,6 +190,28 @@ Tested with Ruffle 0.7.1 (unpkg) in Brave/Chromium on Linux, branch `ruffle-supp
    flash.utils.Dictionary constructor with weak keys"). Objects Flash Player
    would collect stay alive. Workaround: reload the page now and then
    (progress is server-side). Real fix belongs in Ruffle.
+   **Measured 2026-10-31** (headless Brave over CDP, idle on the main map,
+   renderer process RSS between ~100 s and ~260 s after load, each run on an
+   otherwise idle machine):
+
+   | Variant | Ruffle | Growth | fps |
+   |---|---|---|---|
+   | default (wgpu-webgl, quality high) | 0.7.1 | 2.7 MB/s | ~12 |
+   | `?log=error` | 0.7.1 | 2.7 MB/s | ~12 |
+   | `?ruffle=nightly` | 0.8.0-nightly.2026.10.31 | 2.6 MB/s | ~11 |
+   | `?quality=low` | 0.7.1 | 2.7 MB/s | ~17 |
+   | `?renderer=canvas` | 0.7.1 | ~1.6 MB/s | ~6 |
+
+   JS heap (~6 MB), DOM size and GPU process memory stay flat, so the growth
+   is inside Ruffle's wasm memory. It is roughly constant per second rather
+   than per frame, and no page option or newer Ruffle build changes it, so
+   there is nothing to tune on our side. Ruffle PR #23897 (open, implements
+   weak-key `Dictionary`, `useWeakReference` and `System.gc()`) is the most
+   likely upstream fix; draft comment with these numbers in
+   `ruffle-upstream-reports.md`. Probe pitfalls: a headless page only renders
+   frames while something keeps the compositor busy (a screenshot per sample
+   did it), and `brave-browser` is a wrapper script, so stopping it must kill
+   the whole process group or old browsers keep running and skew later runs.
 7. **2026-10-21, first battle.** The tutorial battle against Captain Krunsch
    works end to end in Ruffle (turns, Victory popup, XP/coins/Liberty Bond
    reward). The victory popup's villain image is missing:

@@ -13,7 +13,13 @@
 	<link rel="stylesheet" href="css/tooltiplink.css"/>
 	<link rel="stylesheet" href="css/zbar.css"/>
 	<!-- JS -->
-	<script src="https://unpkg.com/@ruffle-rs/ruffle@0.7.1/ruffle.js"></script>
+	<script>
+		// Optional knobs for testing, e.g. ruffle.html?ruffle=nightly&log=error&renderer=canvas&quality=low
+		// ruffle: npm version or dist-tag of @ruffle-rs/ruffle; log: error|warn|info|debug|trace;
+		// renderer: webgpu|wgpu-webgl|webgl|canvas; quality: low|medium|high|best
+		const pageParams = new URLSearchParams(window.location.search);
+		document.write('<script src="https://unpkg.com/@ruffle-rs/ruffle@' + encodeURIComponent(pageParams.get("ruffle") || "0.7.1") + '/ruffle.js"><\/script>');
+	</script>
 	<script src="//code.jquery.com/jquery-3.4.1.min.js"></script>
 	<script src="https://cdn.socket.io/4.8.3/socket.io.min.js" integrity="sha384-kzavj5fiMwLKzzD1f8S7TeoVIEi7uKHvbTA3ueZkrzYq75pNQUiUi6Dy98Q3fxb0" crossorigin="anonymous"></script>
 	<script src="js/socketio.js"></script>
@@ -211,8 +217,11 @@
 													window.RufflePlayer = window.RufflePlayer || {};
 													window.RufflePlayer.config = {
 														autoplay: "on",
-														logLevel: "info",  // "debug" or "trace" for more Ruffle output in the console
+														logLevel: pageParams.get("log") || "info",  // "debug" or "trace" for more Ruffle output in the console
 													};
+													if (pageParams.get("renderer")) {
+														window.RufflePlayer.config.preferredRenderer = pageParams.get("renderer");
+													}
 													const ruffle = window.RufflePlayer.newest();
 													var player = Object.assign(document.getElementById("ruffle").appendChild(ruffle.createPlayer()), {
 														width: 1000,
@@ -236,7 +245,7 @@
 														backgroundColor: "#333399",
 														allowScriptAccess: true,  // the game calls getUserInfo() etc. through ExternalInterface
 														allowFullscreen: true,
-														quality: "high",
+														quality: pageParams.get("quality") || "high",
 														parameters: flashVars,
 													}).then(() => {
 														console.info("Ruffle successfully loaded the file");
