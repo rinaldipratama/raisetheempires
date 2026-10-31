@@ -16,7 +16,7 @@
 	<script>
 		// Optional knobs for testing, e.g. ruffle.html?ruffle=nightly&log=error&renderer=canvas&quality=low
 		// ruffle: npm version or dist-tag of @ruffle-rs/ruffle; log: error|warn|info|debug|trace;
-		// renderer: webgpu|wgpu-webgl|webgl|canvas; quality: low|medium|high|best
+		// renderer: webgpu|wgpu-webgl|webgl|canvas; quality: low|medium|high|best; timeout: seconds per script
 		const pageParams = new URLSearchParams(window.location.search);
 		document.write('<script src="https://unpkg.com/@ruffle-rs/ruffle@' + encodeURIComponent(pageParams.get("ruffle") || "0.7.1") + '/ruffle.js"><\/script>');
 	</script>
@@ -218,6 +218,10 @@
 													window.RufflePlayer.config = {
 														autoplay: "on",
 														logLevel: pageParams.get("log") || "info",  // "debug" or "trace" for more Ruffle output in the console
+														// Seconds a single script may run before Ruffle kills it (default 15, like Flash Player).
+														// Ruffle runs the game's E4X-heavy code much slower, e.g. the Build menu's New Items tab,
+														// and a killed script leaves the dialog half built.
+														maxExecutionDuration: Number(pageParams.get("timeout")) || 60,
 													};
 													if (pageParams.get("renderer")) {
 														window.RufflePlayer.config.preferredRenderer = pageParams.get("renderer");

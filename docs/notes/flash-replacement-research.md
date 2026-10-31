@@ -297,7 +297,15 @@ Tested with Ruffle 0.7.1 (unpkg) in Brave/Chromium on Linux, branch `ruffle-supp
    Fix: `progress_build_unit()` matches the built unit's `-subtype` and
    `-unitClass`. Still unhandled: QMR03 "Build a Titan part" (`unit._unitType: mega`).
    Test: `test_progress_build_unit_subtype_and_class`.
-13. Next: keep play-testing (later quests, visiting a neighbour, invasions,
+13. **2026-11-01, Build menu "New Items" tab stays empty.** After clicking it a
+   few times Ruffle logged `A script in this movie has taken too long to
+   execute and has been terminated`, then `Store/unregisterLDTimer` threw on
+   close because the dialog was only half built. `Store` rebuilds the tab by
+   walking every buyable item XML with many E4X lookups per item, which Ruffle
+   runs far slower than Flash Player, and repeated clicks stack rebuilds past
+   the 15 s script limit. Ruffle-related (performance). Mitigation:
+   `maxExecutionDuration: 60` in `ruffle.html` (`?timeout=N` to change it).
+14. Next: keep play-testing (later quests, visiting a neighbour, invasions,
    Hire Friends) and note what breaks.
 
 ### Missing original assets (404s seen so far)
