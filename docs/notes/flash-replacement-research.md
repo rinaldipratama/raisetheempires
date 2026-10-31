@@ -289,7 +289,15 @@ Tested with Ruffle 0.7.1 (unpkg) in Brave/Chromium on Linux, branch `ruffle-supp
    Both paths now use `level_up_energy()` in `game_settings.py`. Tests:
    `test_click_next_state_level_up_keeps_overfilled_energy`,
    `test_do_rewards_level_up_energy`, `test_do_rewards_level_up_past_energy_cap_table`.
-12. Next: keep play-testing (later quests, visiting a neighbour, invasions,
+12. **2026-11-01, quest QRUX1 "Grow and Gain!".** "Build one Land Unit"
+   (`_action: build`, `_subtype: army`) stayed at 0/1 after training units. Not
+   Ruffle-related: `progress_build` only matched `_item`, `_resourceType` and
+   `_isUpgrade`, so 51 of the 100 `build` tasks in questSettings could never
+   progress (20 with `_subtype`, 28 with `_unitClass`, 2 with `_unitType`).
+   Fix: `progress_build_unit()` matches the built unit's `-subtype` and
+   `-unitClass`. Still unhandled: QMR03 "Build a Titan part" (`unit._unitType: mega`).
+   Test: `test_progress_build_unit_subtype_and_class`.
+13. Next: keep play-testing (later quests, visiting a neighbour, invasions,
    Hire Friends) and note what breaks.
 
 ### Missing original assets (404s seen so far)

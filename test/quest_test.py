@@ -185,3 +185,20 @@ def test_do_rewards_level_up_past_energy_cap_table():
         quest_engine.do_rewards("Quest", [{"-type": "xp", "-count": "1"}], {})
         player = session['user_object']["userInfo"]["player"]
         assert (player['level'], player['energyMax']) == (67, 46)  # energycaps ends at level 66, keep its last cap
+
+
+def test_progress_build_unit_subtype_and_class():
+    def builds(task, reference_item):
+        return quest_engine.progress_build({}, None, None, "setState", {}, reference_item, None)(task, 0, 0, {})
+
+    land_unit = {'_action': 'build', '_subtype': 'army', '_total': '1'}  # QRUX1 "Build one Land Unit"
+    assert builds(land_unit, "U01")  # infantry01, army
+    assert not builds(land_unit, "U66")  # plane01, air
+    assert not builds(land_unit, "TD01:U01")  # an upgrade is not a new unit
+    assert not quest_engine.progress_build({}, None, None, "setState", {}, "U01", "U01")(land_unit, 0, 0, {})  # already building
+
+    tanks = {'_action': 'build', '_unitClass': 'tank', '_total': '5'}
+    assert builds(tanks, "U04")  # vehicle01, tank
+    assert not builds(tanks, "U01")  # antitank
+    assert builds({'_action': 'build', '_unitClass': 'army_support,air_support,navy_support', '_total': '1'}, "U66") is False
+    assert builds({'_action': 'build', '_unitType': 'carrier', '_total': '10'}, "US29")  # LE_HMS_Ocean

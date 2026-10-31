@@ -263,8 +263,19 @@ def progress_build(state, state_machine, game_item, step, previous_state, refere
                                   reference_item.split(":")[1]).get("-subtype", "") if len(
                                   reference_item.split(":")) > 1 else "")
                               )(task, progress, i, *args)
+                or progress_build_unit(lookup_item_by_code(reference_item.split(":")[0]))(task, progress, i, *args)
         ) \
         and previous_reference_item == None
+
+
+def progress_build_unit(game_item):
+    # tasks like "Build one Land Unit" (_subtype army/air/navy) or "Build 5 tanks" (_unitClass, or _unitType)
+    unit_class = game_item.get("-unitClass")
+    return lambda task, *args: unit_class is not None and \
+        any(key in task for key in ("_subtype", "_unitClass", "_unitType")) and \
+        all_lambda(progress_parameter_implies("_subtype", game_item.get("-subtype")),
+                   progress_parameter_implies_contains("_unitClass", unit_class),
+                   progress_parameter_implies_contains("_unitType", unit_class))(task, *args)
 
 
 def progress_harvest(state, state_machine, game_item, step, previous_state, reference_item, previous_reference_item, *state_args):
